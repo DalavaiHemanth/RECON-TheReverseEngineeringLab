@@ -32,7 +32,7 @@ export async function aiObject<T>(opts: {
 
   if (geminiKey) {
     const google = createGoogleGenerativeAI({ apiKey: geminiKey });
-    const modelName = process.env["AI_MODEL"] || "gemini-2.0-flash";
+    const modelName = process.env["AI_MODEL"] || "gemini-2.5-flash";
     model = google(modelName);
   } else if (openAiKey) {
     const openai = createOpenAI({ apiKey: openAiKey });
