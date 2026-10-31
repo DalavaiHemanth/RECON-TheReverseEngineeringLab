@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX recon_artifacts_one_checklist ON public.recon_artifacts (investigation_id) WHERE kind = 'checklist';

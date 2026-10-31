@@ -1,0 +1,1 @@
+CREATE POLICY "Owner artifact update" ON public.recon_artifacts FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());

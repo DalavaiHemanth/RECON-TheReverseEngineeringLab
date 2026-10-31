@@ -1,0 +1,21 @@
+## Architecture rules
+- Browser capture requests a fresh browser-owned tab grant on every share, stops all tracks on revoke/cancel/unmount, and keeps drafts out of the target payload until review approval; why: users control both capture and submission independently.
+- MP4 decoding uses native browser playback first and a lazy browser-only single-thread WASM fallback with hosted decoder assets; why: recordings stay local and unsupported browser codecs do not block feature analysis.
+- Visual investigations sample bounded JPEG frames in the browser, store them in the existing owner-scoped target payload, and analyze one frame per advance call; why: private media stays within existing access controls and each Worker request remains bounded.
+- Visual findings remain observed or inferred, never implementation-verified, and frame chronology is not proof of causation; why: screenshots cannot establish hidden code or actual clicks.
+- RECON agent lives in `src/lib/recon/`: pure scanner/tools/confidence modules (unit-tested, edge-safe) plus `*.server.ts` for AI calls; why: keeps logic testable and runnable on Workers.
+- The agent advances one step per `advanceInvestigation` server-fn call, driven by the client loop; why: stays within Worker request time limits.
+- New analyzers (binary, browser, runtime) must implement the `ToolDef` shape in `tools.ts`; why: one tool abstraction for the agent.
+- Confidence and "verified" status are computed in code (`confidence.ts`), never taken from the model; why: evidence-backed claims only.
+- All target types share one `TargetPayload` union (`payload.ts`) stored in `repo_indexes.files`; the agent picks tools via `toolsFor(payload)`; why: one agent loop for code, web, runtime and binary targets.
+- Non-code verification uses `verifyReference` in `confidence.ts` (cited ref must appear in collected evidence); code targets use `classifyFinding` against the scanner; why: evidence-backed claims only, per target kind.
+- Web/runtime fetching is server-side only, guarded by `isPublicHttpUrl` (blocks localhost/private IPs); runtime probes are read-only (GET/HEAD/OPTIONS); why: SSRF and safety limits.
+- Binary analysis is pure TypeScript in `binary.ts` and runs client-side before upload; only extracted artifacts (strings, sections, imports) are sent to the server; why: no native deps, no large uploads, never executes the file.
+- Per-user GitHub tokens are AES-GCM encrypted in server-only `public.user_secrets`; authenticated handlers scope privileged token access to context.userId; why: plaintext and direct browser access must not expose credentials.
+- Report graph filters and connection explanations share a pure frontend node assessment from associated findings/evidence, not the aggregate score; why: existing reports stay compatible, reasons match filtering, and endpoint confidence never claims to verify relationships.
+
+- Product lifecycle and derived report artifacts use focused product modules; atomic leases and revision checks reject overlapping or paused late commits; why: bounded advancement stays recoverable across tabs.
+- Retention deletes entire owner investigations and cascading payloads/artifacts through an authenticated daily job; why: images copied into evidence must expire together with sources.
+- Visual review sanitizes pixels locally before approval; selected recording timestamps share one validation function across native and WASM decoding; why: privacy edits are irreversible in submitted frames and decoder behavior is consistent.
+- Follow-ups, comparisons, and briefs are separate owner-scoped artifacts with namespaced evidence references and source versions; why: generated suggestions never mutate original evidence-backed reports.
+- Setup and report recommendations share a pure target-aware module; report gaps and uncertain findings take priority and suggestions do not establish new facts; why: existing reports gain actionable recommendations without altering evidence or triggering AI requests automatically.
