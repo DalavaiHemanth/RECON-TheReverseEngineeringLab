@@ -1,0 +1,1 @@
+import{s as e}from"./tslib.es6-D08kJOjV.js";import{g as t}from"./index-BJra9QYt.js";import{t as n}from"./AppHeader-BMrYm_pf.js";var r=e(),i=()=>(0,r.jsxs)(`div`,{className:`min-h-screen bg-background bg-hero`,children:[(0,r.jsx)(n,{}),(0,r.jsx)(t,{})]});export{i as component};
