@@ -28,6 +28,11 @@ export default defineConfig(({ command }) => ({
     command === "build"
       ? nitro({
           preset: process.env.VERCEL ? "vercel" : undefined,
+          vercel: {
+            functions: {
+              maxDuration: 60,
+            },
+          },
         })
       : undefined,
     react(),
