@@ -23,12 +23,15 @@ export function reportTab(target: string, ready: boolean) {
       : "graph";
 }
 export const artifactSchema = z.object({
-  answer: z.string().max(12000),
-  observations: z
-    .array(z.object({ text: z.string().max(2000), refs: z.array(z.string()).max(20) }))
-    .max(20),
-  suggestions: z.array(z.string().max(2000)).max(20),
-  unknowns: z.array(z.string().max(2000)).max(20),
+  answer: z.string(),
+  observations: z.array(
+    z.object({
+      text: z.string(),
+      refs: z.array(z.string()),
+    }),
+  ),
+  suggestions: z.array(z.string()),
+  unknowns: z.array(z.string()),
 });
 export function groundArtifact(value: z.infer<typeof artifactSchema>, allowed: string[]) {
   const ids = new Set(allowed);
