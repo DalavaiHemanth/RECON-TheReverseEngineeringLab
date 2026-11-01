@@ -16,6 +16,11 @@ import {
   Wrench,
   FileText,
   Database,
+  GitFork,
+  Share2,
+  FileCode2,
+  Image,
+  Terminal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { advanceInvestigation } from "@/lib/recon/investigations.functions";
@@ -35,6 +40,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { InvestigationActions } from "@/components/recon/InvestigationActions";
 import { ReportWorkspace } from "@/components/recon/ReportWorkspace";
+import {
+  InvestigationExecutiveHUD,
+  VisualFlowPipeline,
+  VisualFindingsMatrix,
+  RichEvidenceItem,
+  FormattedTechnicalDetails,
+} from "@/components/recon/InvestigationVisuals";
 import { reportTab } from "@/lib/recon/product";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -241,10 +253,16 @@ function InvestigationPage() {
         report={report}
         evidence={evidence}
       />
-      {report && <ReportSummary report={report} />}
+      {report && (
+        <InvestigationExecutiveHUD
+          report={report}
+          evidence={evidence}
+          hypotheses={hypotheses}
+        />
+      )}
 
       {active && (
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-4 text-sm text-muted-foreground">
           Stop prevents subsequent work and saving late results; an already-issued AI request may
           finish. Keep this page open while analysis advances. Leaving stops automatic progress;
           return to continue from saved evidence.
@@ -258,9 +276,9 @@ function InvestigationPage() {
             : "lg:grid-cols-[300px_minmax(0,1fr)]",
         )}
       >
-        <section className="min-w-0 rounded-lg border border-border bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-sm font-medium text-foreground">Timeline</h2>
+        <section className="min-w-0 rounded-xl border border-border/80 bg-card">
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+            <h2 className="text-sm font-semibold text-foreground">Live Timeline</h2>
             {working && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
           <ol className="max-h-[640px] space-y-1 overflow-y-auto p-3">
@@ -268,7 +286,7 @@ function InvestigationPage() {
               <TimelineItem key={s.i} step={s} />
             ))}
             {working && (
-              <li className="px-2 py-2 font-mono text-xs text-muted-foreground">agent working…</li>
+              <li className="px-2 py-2 font-mono text-xs text-muted-foreground animate-pulse">agent advancing scan…</li>
             )}
           </ol>
         </section>
@@ -278,46 +296,72 @@ function InvestigationPage() {
             key={`${id}-${Boolean(report)}`}
             defaultValue={reportTab(inv.target_type, Boolean(report))}
           >
-            <TabsList className="h-auto flex-wrap justify-start">
-              {report && <TabsTrigger value="flow">Flow</TabsTrigger>}
-              <TabsTrigger value="graph">Graph</TabsTrigger>
-              <TabsTrigger value="evidence">Evidence ({evidence.length})</TabsTrigger>
-              {inv.target_type === "visual" && <TabsTrigger value="screens">Screens</TabsTrigger>}
-              <TabsTrigger value="hypotheses">Hypotheses ({hypotheses.length})</TabsTrigger>
-              {report && <TabsTrigger value="findings">Findings</TabsTrigger>}
-              {report && <TabsTrigger value="details">Technical</TabsTrigger>}
+            <TabsList className="h-auto flex-wrap gap-1 rounded-xl border border-border/80 bg-muted/40 p-1">
+              {report && (
+                <TabsTrigger
+                  value="flow"
+                  className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                >
+                  <GitFork className="h-3.5 w-3.5 text-primary" />
+                  <span>Flow ({report.flow.length})</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="graph"
+                className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+              >
+                <Share2 className="h-3.5 w-3.5 text-cyan-400" />
+                <span>Graph ({liveGraph.nodes.length})</span>
+              </TabsTrigger>
+              {report && (
+                <TabsTrigger
+                  value="findings"
+                  className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Findings ({report.findings.length})</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="evidence"
+                className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+              >
+                <FileCode2 className="h-3.5 w-3.5 text-primary" />
+                <span>Evidence ({evidence.length})</span>
+              </TabsTrigger>
+              {inv.target_type === "visual" && (
+                <TabsTrigger
+                  value="screens"
+                  className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                >
+                  <Image className="h-3.5 w-3.5 text-cyan-400" />
+                  <span>Screens ({evidence.filter((e) => e.kind === "visual_frame").length})</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="hypotheses"
+                className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+              >
+                <FlaskConical className="h-3.5 w-3.5 text-purple-400" />
+                <span>Hypotheses ({hypotheses.length})</span>
+              </TabsTrigger>
+              {report && (
+                <TabsTrigger
+                  value="details"
+                  className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                >
+                  <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>Technical Spec</span>
+                </TabsTrigger>
+              )}
             </TabsList>
+
             {report && (
-              <TabsContent value="flow">
-                <ol className="space-y-2">
-                  {report.flow.map((f) => (
-                    <li
-                      key={f.order}
-                      className="flex gap-3 rounded-lg border border-border bg-card p-4"
-                    >
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-primary font-mono text-xs text-primary-foreground">
-                        {f.order}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-medium text-foreground">{f.title}</p>
-                          <StatusBadge status={f.verified ? "verified" : "inferred"} />
-                        </div>
-                        <p className="mt-1 text-sm text-muted-foreground">{f.description}</p>
-                        {f.file && (
-                          <p className="mt-1 font-mono text-xs text-primary">
-                            {f.file}
-                            {f.line ? `:${f.line}` : ""}
-                            {f.symbol ? ` · ${f.symbol}` : ""}
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+              <TabsContent value="flow" className="mt-4">
+                <VisualFlowPipeline flow={report.flow} evidence={evidence} />
               </TabsContent>
             )}
-            <TabsContent value="graph">
+            <TabsContent value="graph" className="mt-4">
               <FilteredEvidenceGraph
                 key={id}
                 nodes={liveGraph.nodes}
@@ -326,18 +370,23 @@ function InvestigationPage() {
                 evidence={evidence}
               />
             </TabsContent>
-            <TabsContent value="evidence">
-              <div className="space-y-2">
+            {report && (
+              <TabsContent value="findings" className="mt-4">
+                <VisualFindingsMatrix report={report} evidence={evidence} />
+              </TabsContent>
+            )}
+            <TabsContent value="evidence" className="mt-4">
+              <div className="space-y-2.5">
                 {evidence
                   .slice()
                   .reverse()
                   .map((e) => (
-                    <EvidenceItem key={e.id} e={e} />
+                    <RichEvidenceItem key={e.id} e={e} />
                   ))}
               </div>
             </TabsContent>
             {inv.target_type === "visual" && (
-              <TabsContent value="screens">
+              <TabsContent value="screens" className="mt-4">
                 <div
                   className={cn(
                     "grid gap-4",
@@ -350,7 +399,7 @@ function InvestigationPage() {
                     .map((e) => (
                       <figure
                         key={e.id}
-                        className="min-w-0 overflow-hidden rounded-lg border border-border bg-card"
+                        className="min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm"
                       >
                         {e.image && (
                           <img
@@ -363,7 +412,7 @@ function InvestigationPage() {
                           <p className="font-mono text-xs text-primary">
                             {e.id} · {e.timestamp?.toFixed(1)}s
                           </p>
-                          <p className="mt-1 text-sm font-medium text-foreground">{e.title}</p>
+                          <p className="mt-1 text-sm font-semibold text-foreground">{e.title}</p>
                           <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
                             {e.snippet}
                           </p>
@@ -373,10 +422,10 @@ function InvestigationPage() {
                 </div>
               </TabsContent>
             )}
-            <TabsContent value="hypotheses">
-              <div className="space-y-2">
+            <TabsContent value="hypotheses" className="mt-4">
+              <div className="space-y-2.5">
                 {hypotheses.map((h) => (
-                  <div key={h.id} className="rounded-lg border border-border bg-card p-4">
+                  <div key={h.id} className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs text-muted-foreground">{h.id}</span>
                       <StatusBadge
@@ -400,25 +449,8 @@ function InvestigationPage() {
               </div>
             </TabsContent>
             {report && (
-              <TabsContent value="findings">
-                <Findings report={report} />
-              </TabsContent>
-            )}
-            {report && (
-              <TabsContent value="details">
-                <div className="rounded-lg border border-border bg-card p-5">
-                  <p className="whitespace-pre-wrap text-sm text-foreground">
-                    {report.technical_details}
-                  </p>
-                  <h3 className="mt-6 text-sm font-medium text-foreground">Confidence breakdown</h3>
-                  <dl className="mt-2 grid grid-cols-2 gap-2 font-mono text-xs text-muted-foreground sm:grid-cols-3">
-                    <div>verified ratio: {(report.confidence.verifiedRatio * 100).toFixed(0)}%</div>
-                    <div>evidence items: {report.confidence.evidenceCount}</div>
-                    <div>independent files: {report.confidence.distinctFiles}</div>
-                    <div>direct observations: {report.confidence.directObservations}</div>
-                    <div>contradictions: {report.confidence.contradictions}</div>
-                  </dl>
-                </div>
+              <TabsContent value="details" className="mt-4">
+                <FormattedTechnicalDetails report={report} />
               </TabsContent>
             )}
           </Tabs>
