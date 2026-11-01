@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   AlertTriangle,
   Check,
-  CheckCircle2,
   ChevronDown,
   CircleHelp,
   Code2,
@@ -14,7 +13,6 @@ import {
   Globe,
   KeyRound,
   Layers,
-  Search,
   ShieldCheck,
   Terminal,
 } from "lucide-react";
@@ -28,20 +26,26 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 export function InvestigationExecutiveHUD({
   report,
-  evidence,
-  hypotheses,
+  evidence = [],
+  hypotheses = [],
 }: {
   report: Report;
-  evidence: Evidence[];
-  hypotheses: Hypothesis[];
+  evidence?: Evidence[];
+  hypotheses?: Hypothesis[];
 }) {
   const [copied, setCopied] = useState(false);
   const [unknownsOpen, setUnknownsOpen] = useState(false);
 
-  const score = report.confidence.score ?? 0;
-  const verifiedCount = report.findings.filter((f) => f.status === "verified").length;
-  const observedCount = report.findings.filter((f) => f.status === "observed").length;
-  const inferredCount = report.findings.filter((f) => f.status === "inferred").length;
+  const score = report?.confidence?.score ?? 0;
+  const findings = Array.isArray(report?.findings) ? report.findings : [];
+  const verifiedCount = findings.filter((f) => f.status === "verified").length;
+  const observedCount = findings.filter((f) => f.status === "observed").length;
+  const inferredCount = findings.filter((f) => f.status === "inferred").length;
+  const unknowns = Array.isArray(report?.unknowns) ? report.unknowns : [];
+  const safeEvidence = Array.isArray(evidence) ? evidence : [];
+  const safeHypotheses = Array.isArray(hypotheses) ? hypotheses : [];
+  const distinctFiles = report?.confidence?.distinctFiles ?? 0;
+  const shortAnswer = report?.short_answer || "Investigation completed. See flow, graph, and findings below.";
 
   const circumference = 2 * Math.PI * 40;
   const strokeDashoffset = circumference - (score / 100) * circumference;
@@ -54,7 +58,7 @@ export function InvestigationExecutiveHUD({
         : { stroke: "#ef4444", text: "text-red-400", label: "LIMITED EVIDENCE" };
 
   const handleCopy = () => {
-    void navigator.clipboard.writeText(report.short_answer);
+    void navigator.clipboard.writeText(shortAnswer);
     setCopied(true);
     toast.success("Short answer copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
@@ -132,12 +136,12 @@ export function InvestigationExecutiveHUD({
               </button>
             </div>
             <p className="mt-2 text-base leading-relaxed font-medium text-foreground">
-              {report.short_answer}
+              {shortAnswer}
             </p>
           </div>
 
           {/* Unknowns drawer */}
-          {report.unknowns.length > 0 && (
+          {unknowns.length > 0 && (
             <div className="mt-4 border-t border-border/60 pt-3">
               <button
                 onClick={() => setUnknownsOpen(!unknownsOpen)}
@@ -145,7 +149,7 @@ export function InvestigationExecutiveHUD({
               >
                 <CircleHelp className="h-3.5 w-3.5 text-amber-400" />
                 <span>
-                  {report.unknowns.length} unresolved area{report.unknowns.length > 1 ? "s" : ""}
+                  {unknowns.length} unresolved area{unknowns.length > 1 ? "s" : ""}
                 </span>
                 <ChevronDown
                   className={cn("h-3 w-3 transition-transform", unknownsOpen && "rotate-180")}
@@ -153,7 +157,7 @@ export function InvestigationExecutiveHUD({
               </button>
               {unknownsOpen && (
                 <ul className="mt-2 space-y-1.5 rounded-lg border border-border/50 bg-background/60 p-3 text-xs text-muted-foreground">
-                  {report.unknowns.map((u, i) => (
+                  {unknowns.map((u, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/80" />
                       <span>{u}</span>
@@ -177,7 +181,7 @@ export function InvestigationExecutiveHUD({
                 <span>Evidence</span>
               </div>
               <p className="mt-1 font-mono text-lg font-bold text-foreground">
-                {evidence.length}
+                {safeEvidence.length}
               </p>
             </div>
             <div className="rounded border border-border/60 bg-card/60 p-2.5">
@@ -209,8 +213,8 @@ export function InvestigationExecutiveHUD({
             </div>
           </div>
           <div className="flex items-center justify-between border-t border-border/50 pt-2 font-mono text-[11px] text-muted-foreground">
-            <span>Hypotheses: {hypotheses.length}</span>
-            <span>Files: {report.confidence.distinctFiles}</span>
+            <span>Hypotheses: {safeHypotheses.length}</span>
+            <span>Files: {distinctFiles}</span>
           </div>
         </div>
       </div>
@@ -222,19 +226,19 @@ export function InvestigationExecutiveHUD({
 // 2. INTERACTIVE VISUAL FLOW PIPELINE
 // ---------------------------------------------------------------------------
 export function VisualFlowPipeline({
-  flow,
-  evidence,
+  flow = [],
+  evidence = [],
 }: {
   flow: FlowStep[];
   evidence: Evidence[];
 }) {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
-  const getStepIcon = (title: string) => {
-    const t = title.toLowerCase();
+  const getStepIcon = (title: string = "") => {
+    const t = (title || "").toLowerCase();
     if (t.includes("auth") || t.includes("login") || t.includes("token") || t.includes("secret"))
       return KeyRound;
-    if (t.includes("api") || t.includes("route") || t.includes("request") || t.includes("endpoint"))
+    if (t.includes("api") || t.includes("route") || t.includes("request") || t.includes("endpoint") || t.includes("http"))
       return Globe;
     if (t.includes("db") || t.includes("database") || t.includes("query") || t.includes("table") || t.includes("sql"))
       return Database;
@@ -245,17 +249,37 @@ export function VisualFlowPipeline({
     return Code2;
   };
 
+  const safeFlow = Array.isArray(flow) ? flow : [];
+  const safeEvidence = Array.isArray(evidence) ? evidence : [];
+
+  if (safeFlow.length === 0) {
+    return (
+      <div className="rounded-xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground">
+        No flow steps generated for this target yet. Explore the Graph or Findings tabs.
+      </div>
+    );
+  }
+
   return (
     <div className="relative pl-6 before:absolute before:bottom-3 before:left-3 before:top-3 before:w-0.5 before:bg-gradient-to-b before:from-primary before:via-border before:to-transparent">
       <div className="space-y-4">
-        {flow.map((f) => {
+        {safeFlow.map((f, idx) => {
+          const stepOrder = f.order ?? idx + 1;
           const Icon = getStepIcon(f.title);
-          const isExpanded = expandedStep === f.order;
-          const citedEvidence = evidence.filter((e) => f.evidence_ids.includes(e.id));
+          const isExpanded = expandedStep === stepOrder;
+
+          // Safe matching for supporting evidence
+          const stepEvidenceIds: string[] = (f as unknown as { evidence_ids?: string[] }).evidence_ids ?? [];
+          const citedEvidence = safeEvidence.filter((e) => {
+            if (stepEvidenceIds.length > 0 && stepEvidenceIds.includes(e.id)) return true;
+            if (f.file && e.file && (e.file.includes(f.file) || f.file.includes(e.file))) return true;
+            if (f.symbol && e.snippet && e.snippet.includes(f.symbol)) return true;
+            return false;
+          });
 
           return (
             <div
-              key={f.order}
+              key={stepOrder}
               className={cn(
                 "group relative rounded-xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-md",
                 f.verified ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-amber-500",
@@ -263,7 +287,7 @@ export function VisualFlowPipeline({
             >
               {/* Step indicator dot on timeline */}
               <span className="absolute -left-[30px] top-4.5 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background font-mono text-xs font-semibold text-foreground shadow-sm">
-                {f.order}
+                {stepOrder}
               </span>
 
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -290,32 +314,30 @@ export function VisualFlowPipeline({
 
               <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{f.description}</p>
 
-              {/* Evidence reference chips */}
-              {f.evidence_ids.length > 0 && (
+              {/* Supporting evidence chips if any match */}
+              {citedEvidence.length > 0 && (
                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/50 pt-2.5">
                   <span className="font-mono text-[10px] uppercase text-muted-foreground">
                     Supporting Evidence:
                   </span>
-                  {f.evidence_ids.map((id) => (
+                  {citedEvidence.slice(0, 4).map((ev) => (
                     <button
-                      key={id}
-                      onClick={() => setExpandedStep(isExpanded ? null : f.order)}
+                      key={ev.id}
+                      onClick={() => setExpandedStep(isExpanded ? null : stepOrder)}
                       className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary hover:bg-primary/20"
                     >
-                      {id}
+                      {ev.id}
                     </button>
                   ))}
-                  {citedEvidence.length > 0 && (
-                    <button
-                      onClick={() => setExpandedStep(isExpanded ? null : f.order)}
-                      className="ml-auto flex items-center gap-1 font-mono text-[11px] text-muted-foreground hover:text-foreground"
-                    >
-                      <span>{isExpanded ? "Hide" : "Inspect"} snippet</span>
-                      <ChevronDown
-                        className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-180")}
-                      />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setExpandedStep(isExpanded ? null : stepOrder)}
+                    className="ml-auto flex items-center gap-1 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    <span>{isExpanded ? "Hide" : "Inspect"} snippet</span>
+                    <ChevronDown
+                      className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-180")}
+                    />
+                  </button>
                 </div>
               )}
 
@@ -329,7 +351,7 @@ export function VisualFlowPipeline({
                           {ev.id}: {ev.title}
                         </span>
                         <span className="font-mono text-[10px] text-muted-foreground uppercase">
-                          {ev.kind.replace("_", " ")}
+                          {(ev.kind || "").replace("_", " ")}
                         </span>
                       </div>
                       <pre className="mt-1.5 max-h-48 overflow-x-auto rounded bg-card p-2.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
@@ -352,10 +374,10 @@ export function VisualFlowPipeline({
 // ---------------------------------------------------------------------------
 export function VisualFindingsMatrix({
   report,
-  evidence,
+  evidence = [],
 }: {
   report: Report;
-  evidence: Evidence[];
+  evidence?: Evidence[];
 }) {
   const [inspectedEvId, setInspectedEvId] = useState<string | null>(null);
   const groups = [
@@ -365,12 +387,15 @@ export function VisualFindingsMatrix({
     { key: "unknown", title: "Unconfirmed Areas", tone: "border-slate-500/40 bg-slate-500/5" },
   ] as const;
 
-  const inspectedEvidence = evidence.find((e) => e.id === inspectedEvId);
+  const findings = Array.isArray(report?.findings) ? report.findings : [];
+  const safeEvidence = Array.isArray(evidence) ? evidence : [];
+  const contradictions = Array.isArray(report?.contradictions) ? report.contradictions : [];
+  const inspectedEvidence = safeEvidence.find((e) => e.id === inspectedEvId);
 
   return (
     <div className="space-y-6">
       {groups.map((g) => {
-        const items = report.findings.filter((f) => f.status === g.key);
+        const items = findings.filter((f) => f.status === g.key);
         if (!items.length) return null;
 
         return (
@@ -386,46 +411,50 @@ export function VisualFindingsMatrix({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              {items.map((f, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "flex flex-col justify-between rounded-xl border p-4 transition-all hover:shadow-md",
-                    g.tone,
-                  )}
-                >
-                  <div>
-                    <p className="text-sm font-medium leading-snug text-foreground">{f.claim}</p>
-                    {f.file && (
-                      <p className="mt-2 font-mono text-xs text-primary">
-                        {f.file}
-                        {f.line ? `:${f.line}` : ""}
-                        {f.symbol ? ` · ${f.symbol}` : ""}
-                      </p>
+              {items.map((f, i) => {
+                const evidenceIds = Array.isArray(f.evidence_ids) ? f.evidence_ids : [];
+
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex flex-col justify-between rounded-xl border p-4 transition-all hover:shadow-md",
+                      g.tone,
+                    )}
+                  >
+                    <div>
+                      <p className="text-sm font-medium leading-snug text-foreground">{f.claim}</p>
+                      {f.file && (
+                        <p className="mt-2 font-mono text-xs text-primary">
+                          {f.file}
+                          {f.line ? `:${f.line}` : ""}
+                          {f.symbol ? ` · ${f.symbol}` : ""}
+                        </p>
+                      )}
+                    </div>
+
+                    {evidenceIds.length > 0 && (
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2 font-mono text-[10px]">
+                        <span className="text-muted-foreground">Refs:</span>
+                        {evidenceIds.map((id) => (
+                          <button
+                            key={id}
+                            onClick={() => setInspectedEvId(inspectedEvId === id ? null : id)}
+                            className={cn(
+                              "rounded border px-1.5 py-0.5 transition-colors",
+                              inspectedEvId === id
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border/60 bg-muted/40 text-muted-foreground hover:border-primary/60 hover:text-foreground",
+                            )}
+                          >
+                            {id}
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
-
-                  {f.evidence_ids.length > 0 && (
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2 font-mono text-[10px]">
-                      <span className="text-muted-foreground">Refs:</span>
-                      {f.evidence_ids.map((id) => (
-                        <button
-                          key={id}
-                          onClick={() => setInspectedEvId(inspectedEvId === id ? null : id)}
-                          className={cn(
-                            "rounded border px-1.5 py-0.5 transition-colors",
-                            inspectedEvId === id
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border/60 bg-muted/40 text-muted-foreground hover:border-primary/60 hover:text-foreground",
-                          )}
-                        >
-                          {id}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         );
@@ -453,23 +482,29 @@ export function VisualFindingsMatrix({
       )}
 
       {/* Contradictions */}
-      {report.contradictions.length > 0 && (
+      {contradictions.length > 0 && (
         <section className="space-y-2">
           <p className="flex items-center gap-2 text-sm font-semibold text-amber-400">
             <AlertTriangle className="h-4 w-4" /> Detected Inconsistencies & Contradictions
           </p>
           <div className="space-y-2">
-            {report.contradictions.map((c, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-foreground"
-              >
-                <p>{c.description}</p>
-                <p className="mt-1 font-mono text-xs text-muted-foreground">
-                  Cited evidence: {c.evidence_ids.join(", ")}
-                </p>
-              </div>
-            ))}
+            {contradictions.map((c, i) => {
+              const evidenceIds = Array.isArray(c.evidence_ids) ? c.evidence_ids : [];
+
+              return (
+                <div
+                  key={i}
+                  className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-foreground"
+                >
+                  <p>{c.description}</p>
+                  {evidenceIds.length > 0 && (
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                      Cited evidence: {evidenceIds.join(", ")}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -484,28 +519,32 @@ export function RichEvidenceItem({ e }: { e: Evidence }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const title = e?.title || "";
+  const snippet = e?.snippet || "";
+  const kind = e?.kind || "";
+
   const isHttp =
-    e.kind === "http_probe" ||
-    e.kind === "web_fetch" ||
-    e.title.toLowerCase().startsWith("get ") ||
-    e.title.toLowerCase().startsWith("post ");
+    kind === "http_probe" ||
+    kind === "web_fetch" ||
+    title.toLowerCase().startsWith("get ") ||
+    title.toLowerCase().startsWith("post ");
 
-  const isCode = e.kind === "repo_file" || e.line != null || e.symbol != null;
-  const isVisual = e.kind === "visual_frame" || Boolean(e.image);
+  const isCode = kind === "repo_file" || e?.line != null || e?.symbol != null;
+  const isVisual = kind === "visual_frame" || Boolean(e?.image);
 
-  const getMethodBadge = (title: string) => {
-    if (title.toUpperCase().startsWith("GET"))
+  const getMethodBadge = (t: string) => {
+    if (t.toUpperCase().startsWith("GET"))
       return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
-    if (title.toUpperCase().startsWith("POST"))
+    if (t.toUpperCase().startsWith("POST"))
       return "border-blue-500/40 bg-blue-500/10 text-blue-400";
-    if (title.toUpperCase().startsWith("DELETE"))
+    if (t.toUpperCase().startsWith("DELETE"))
       return "border-red-500/40 bg-red-500/10 text-red-400";
     return "border-primary/40 bg-primary/10 text-primary";
   };
 
   const copySnippet = (ev: React.MouseEvent) => {
     ev.stopPropagation();
-    void navigator.clipboard.writeText(e.snippet);
+    void navigator.clipboard.writeText(snippet);
     setCopied(true);
     toast.success("Snippet copied");
     setTimeout(() => setCopied(false), 2000);
@@ -523,7 +562,7 @@ export function RichEvidenceItem({ e }: { e: Evidence }) {
           <span
             className={cn(
               "rounded border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase",
-              getMethodBadge(e.title),
+              getMethodBadge(title),
             )}
           >
             HTTP
@@ -538,11 +577,11 @@ export function RichEvidenceItem({ e }: { e: Evidence }) {
           </span>
         ) : (
           <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground uppercase">
-            {e.kind.replace("_", " ")}
+            {kind.replace("_", " ")}
           </span>
         )}
 
-        <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">{e.title}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">{title}</span>
 
         {e.timestamp != null && (
           <span className="font-mono text-[10px] text-muted-foreground">
@@ -575,21 +614,21 @@ export function RichEvidenceItem({ e }: { e: Evidence }) {
               </span>
               <span>{e.tool || "evidence_viewer"}</span>
             </div>
-            {e.source && <span className="truncate max-w-xs">{e.source}</span>}
+            {e.file && <span className="truncate max-w-xs">{e.file}</span>}
           </div>
 
           {e.image && (
             <div className="border-b border-border/60 bg-black/40 p-2">
               <img
                 src={e.image}
-                alt={e.title}
+                alt={title}
                 className="max-h-96 w-full rounded object-contain"
               />
             </div>
           )}
 
           <pre className="max-h-80 overflow-x-auto p-4 font-mono text-[11px] leading-relaxed text-muted-foreground">
-            {e.snippet}
+            {snippet}
           </pre>
         </div>
       )}
@@ -601,11 +640,17 @@ export function RichEvidenceItem({ e }: { e: Evidence }) {
 // 5. TECHNICAL DETAILS VIEW (Structured Sections instead of Wall of Text)
 // ---------------------------------------------------------------------------
 export function FormattedTechnicalDetails({ report }: { report: Report }) {
-  // Parse paragraphs into cards if possible
-  const sections = report.technical_details
+  const technicalDetails = report?.technical_details || "No technical specification provided.";
+  const sections = technicalDetails
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean);
+
+  const verifiedRatio = report?.confidence?.verifiedRatio ?? 0;
+  const evidenceCount = report?.confidence?.evidenceCount ?? 0;
+  const distinctFiles = report?.confidence?.distinctFiles ?? 0;
+  const directObservations = report?.confidence?.directObservations ?? 0;
+  const contradictions = report?.confidence?.contradictions ?? 0;
 
   return (
     <div className="space-y-6">
@@ -613,25 +658,25 @@ export function FormattedTechnicalDetails({ report }: { report: Report }) {
         <div className="rounded-xl border border-border/80 bg-card p-4">
           <p className="font-mono text-xs text-muted-foreground">Verified Claims Ratio</p>
           <p className="mt-1 font-mono text-2xl font-bold text-emerald-400">
-            {(report.confidence.verifiedRatio * 100).toFixed(0)}%
+            {(verifiedRatio * 100).toFixed(0)}%
           </p>
         </div>
         <div className="rounded-xl border border-border/80 bg-card p-4">
           <p className="font-mono text-xs text-muted-foreground">Total Evidence Checked</p>
           <p className="mt-1 font-mono text-2xl font-bold text-foreground">
-            {report.confidence.evidenceCount}
+            {evidenceCount}
           </p>
         </div>
         <div className="rounded-xl border border-border/80 bg-card p-4">
           <p className="font-mono text-xs text-muted-foreground">Distinct Source Files</p>
           <p className="mt-1 font-mono text-2xl font-bold text-primary">
-            {report.confidence.distinctFiles}
+            {distinctFiles}
           </p>
         </div>
         <div className="rounded-xl border border-border/80 bg-card p-4">
           <p className="font-mono text-xs text-muted-foreground">Direct Observations</p>
           <p className="mt-1 font-mono text-2xl font-bold text-cyan-400">
-            {report.confidence.directObservations}
+            {directObservations}
           </p>
         </div>
         <div className="rounded-xl border border-border/80 bg-card p-4">
@@ -639,10 +684,10 @@ export function FormattedTechnicalDetails({ report }: { report: Report }) {
           <p
             className={cn(
               "mt-1 font-mono text-2xl font-bold",
-              report.confidence.contradictions > 0 ? "text-red-400" : "text-muted-foreground",
+              contradictions > 0 ? "text-red-400" : "text-muted-foreground",
             )}
           >
-            {report.confidence.contradictions}
+            {contradictions}
           </p>
         </div>
       </div>

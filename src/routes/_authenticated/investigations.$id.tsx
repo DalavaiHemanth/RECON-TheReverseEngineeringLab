@@ -303,7 +303,7 @@ function InvestigationPage() {
                   className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
                 >
                   <GitFork className="h-3.5 w-3.5 text-primary" />
-                  <span>Flow ({report.flow.length})</span>
+                  <span>Flow ({report.flow?.length ?? 0})</span>
                 </TabsTrigger>
               )}
               <TabsTrigger
@@ -311,7 +311,7 @@ function InvestigationPage() {
                 className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
               >
                 <Share2 className="h-3.5 w-3.5 text-cyan-400" />
-                <span>Graph ({liveGraph.nodes.length})</span>
+                <span>Graph ({liveGraph.nodes?.length ?? 0})</span>
               </TabsTrigger>
               {report && (
                 <TabsTrigger
@@ -319,7 +319,7 @@ function InvestigationPage() {
                   className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>Findings ({report.findings.length})</span>
+                  <span>Findings ({report.findings?.length ?? 0})</span>
                 </TabsTrigger>
               )}
               <TabsTrigger
@@ -358,7 +358,7 @@ function InvestigationPage() {
 
             {report && (
               <TabsContent value="flow" className="mt-4">
-                <VisualFlowPipeline flow={report.flow} evidence={evidence} />
+                <VisualFlowPipeline flow={report.flow ?? []} evidence={evidence} />
               </TabsContent>
             )}
             <TabsContent value="graph" className="mt-4">
