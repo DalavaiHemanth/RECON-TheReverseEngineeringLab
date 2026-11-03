@@ -34,7 +34,12 @@ export type InvState = {
 };
 
 const SYSTEM = `You are RECON, an autonomous software investigator.
-Focus only on the user's question. Never claim anything you have not seen in evidence. Cite evidence IDs (E1, E2...).`;
+Focus only on the user's question. Never claim anything you have not seen in evidence. Cite evidence IDs (E1, E2...).
+Writing rules:
+1. Show the answer first. Sentences <= 20 words; paragraphs <= 3 lines.
+2. Lead with the result, not the method. Cut filler ("Please note that", "In order to", "It is important to").
+3. short_answer must be a direct 1-2 sentence verdict (<= 300 chars).
+4. Findings claims must be concise statements (<= 80 chars). Explanations <= 3 sentences.`;
 
 const MODE_HINT: Record<TargetPayload["type"], string> = {
   repo: "White-box source analysis: you can read the actual source code.",

@@ -8,16 +8,27 @@ import {
   Copy,
   Cpu,
   Database,
+  ExternalLink,
   Eye,
   FileCode2,
   Globe,
   KeyRound,
   Layers,
+  PanelRight,
   ShieldCheck,
   Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/recon/badges";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { ExpandableText } from "@/components/recon/ExpandableText";
 import type { Evidence, FlowStep, Hypothesis, Report } from "@/lib/recon/types";
 import { cn } from "@/lib/utils";
 
@@ -60,18 +71,39 @@ export function InvestigationExecutiveHUD({
   const handleCopy = () => {
     void navigator.clipboard.writeText(shortAnswer);
     setCopied(true);
-    toast.success("Short answer copied to clipboard");
+    toast.success("Verdict copied");
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <section className="mt-6 rounded-xl border border-border/80 bg-gradient-to-b from-card/90 to-card/40 p-5 shadow-lg backdrop-blur">
       <div className="grid gap-6 lg:grid-cols-[220px_1fr_260px]">
-        {/* Radial Score Gauge */}
+        {/* Radial Score Gauge with Popover explanation */}
         <div className="flex flex-col items-center justify-center rounded-lg border border-border/50 bg-background/50 p-4 text-center">
-          <p className="font-mono text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Evidence Score
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-mono text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              Evidence Score
+            </p>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="rounded text-muted-foreground transition-colors hover:text-foreground focus:outline-none"
+                  title="Score explanation"
+                  aria-label="Score explanation"
+                >
+                  <CircleHelp className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-68 p-3 text-xs leading-relaxed text-muted-foreground" side="top">
+                <p className="font-semibold text-foreground">Evidence Coverage ({score}%)</p>
+                <p className="mt-1">
+                  Measures verified references checked against gathered code, endpoints, or frames. It is not an LLM correctness guess.
+                </p>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           <div className="relative my-3 flex items-center justify-center">
             <svg className="h-28 w-28 -rotate-90 transform" viewBox="0 0 100 100">
               <circle
@@ -116,7 +148,7 @@ export function InvestigationExecutiveHUD({
           </span>
         </div>
 
-        {/* Verdict & Short Answer */}
+        {/* Verdict & Short Answer with Clamp */}
         <div className="flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2">
@@ -135,9 +167,9 @@ export function InvestigationExecutiveHUD({
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
-            <p className="mt-2 text-base leading-relaxed font-medium text-foreground">
-              {shortAnswer}
-            </p>
+            <div className="mt-2">
+              <ExpandableText text={shortAnswer} lines={3} className="text-foreground font-medium text-base leading-relaxed" />
+            </div>
           </div>
 
           {/* Unknowns drawer */}
@@ -169,7 +201,7 @@ export function InvestigationExecutiveHUD({
           )}
         </div>
 
-        {/* Scan Architecture Metrics */}
+        {/* Scan Architecture Counts */}
         <div className="flex flex-col justify-between rounded-lg border border-border/50 bg-background/50 p-4">
           <p className="font-mono text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             Evidence Profile
@@ -221,7 +253,6 @@ export function InvestigationExecutiveHUD({
     </section>
   );
 }
-
 // ---------------------------------------------------------------------------
 // 2. INTERACTIVE VISUAL FLOW PIPELINE
 // ---------------------------------------------------------------------------
@@ -312,7 +343,9 @@ export function VisualFlowPipeline({
                 </div>
               </div>
 
-              <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{f.description}</p>
+              <div className="mt-2.5">
+                <ExpandableText text={f.description} lines={2} className="text-sm leading-relaxed text-muted-foreground" />
+              </div>
 
               {/* Supporting evidence chips if any match */}
               {citedEvidence.length > 0 && (
@@ -370,8 +403,89 @@ export function VisualFlowPipeline({
 }
 
 // ---------------------------------------------------------------------------
-// 3. VISUAL FINDINGS MATRIX (Interactive Cards Grouped by Verification)
+// 3. FINDINGS MATRIX WITH COLLAPSIBLE ROWS
 // ---------------------------------------------------------------------------
+function FindingRowItem({
+  finding: f,
+  onInspectRef,
+  inspectedEvId,
+}: {
+  finding: Finding;
+  onInspectRef: (id: string) => void;
+  inspectedEvId: string | null;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const evidenceIds = Array.isArray(f.evidence_ids) ? f.evidence_ids : [];
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border/80 bg-card/70 transition-all hover:border-primary/40">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-muted/30"
+      >
+        <div className="flex min-w-0 items-center gap-2.5 flex-1">
+          <StatusBadge status={f.status} />
+          <span className={cn("text-xs sm:text-sm font-medium text-foreground", !expanded && "truncate")}>
+            {f.claim}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {f.file && (
+            <span className="hidden font-mono text-[11px] text-muted-foreground md:inline-block max-w-[140px] truncate">
+              {f.file.split("/").pop()}
+            </span>
+          )}
+          {evidenceIds.length > 0 && (
+            <span className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+              {evidenceIds.length} ref{evidenceIds.length > 1 ? "s" : ""}
+            </span>
+          )}
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-180")}
+          />
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border/50 bg-background/50 p-3.5 text-xs space-y-2">
+          <p className="text-foreground leading-relaxed text-sm">{f.claim}</p>
+          {f.file && (
+            <p className="font-mono text-xs text-primary">
+              {f.file}
+              {f.line ? `:${f.line}` : ""}
+              {f.symbol ? ` · ${f.symbol}` : ""}
+            </p>
+          )}
+          {evidenceIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 font-mono text-[10px]">
+              <span className="text-muted-foreground">Evidence refs:</span>
+              {evidenceIds.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    onInspectRef(id);
+                  }}
+                  className={cn(
+                    "rounded border px-1.5 py-0.5 transition-colors",
+                    inspectedEvId === id
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border/60 bg-muted/40 text-muted-foreground hover:border-primary/60 hover:text-foreground",
+                  )}
+                >
+                  {id}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function VisualFindingsMatrix({
   report,
   evidence = [],
@@ -381,10 +495,10 @@ export function VisualFindingsMatrix({
 }) {
   const [inspectedEvId, setInspectedEvId] = useState<string | null>(null);
   const groups = [
-    { key: "verified", title: "Verified Findings", tone: "border-emerald-500/40 bg-emerald-500/5" },
-    { key: "observed", title: "Direct Observations", tone: "border-cyan-500/40 bg-cyan-500/5" },
-    { key: "inferred", title: "Inferred Claims", tone: "border-amber-500/40 bg-amber-500/5" },
-    { key: "unknown", title: "Unconfirmed Areas", tone: "border-slate-500/40 bg-slate-500/5" },
+    { key: "verified", title: "Verified Findings" },
+    { key: "observed", title: "Direct Observations" },
+    { key: "inferred", title: "Inferred Claims" },
+    { key: "unknown", title: "Unconfirmed Areas" },
   ] as const;
 
   const findings = Array.isArray(report?.findings) ? report.findings : [];
@@ -393,68 +507,32 @@ export function VisualFindingsMatrix({
   const inspectedEvidence = safeEvidence.find((e) => e.id === inspectedEvId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {groups.map((g) => {
         const items = findings.filter((f) => f.status === g.key);
         if (!items.length) return null;
 
         return (
-          <section key={g.key} className="space-y-3">
-            <div className="flex items-center justify-between">
+          <section key={g.key} className="space-y-2">
+            <div className="flex items-center justify-between pb-1 border-b border-border/40">
               <div className="flex items-center gap-2">
                 <StatusBadge status={g.key} />
-                <h3 className="text-sm font-semibold text-foreground">{g.title}</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.title}</h3>
               </div>
               <span className="font-mono text-xs text-muted-foreground">
-                {items.length} item{items.length > 1 ? "s" : ""}
+                {items.length}
               </span>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {items.map((f, i) => {
-                const evidenceIds = Array.isArray(f.evidence_ids) ? f.evidence_ids : [];
-
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      "flex flex-col justify-between rounded-xl border p-4 transition-all hover:shadow-md",
-                      g.tone,
-                    )}
-                  >
-                    <div>
-                      <p className="text-sm font-medium leading-snug text-foreground">{f.claim}</p>
-                      {f.file && (
-                        <p className="mt-2 font-mono text-xs text-primary">
-                          {f.file}
-                          {f.line ? `:${f.line}` : ""}
-                          {f.symbol ? ` · ${f.symbol}` : ""}
-                        </p>
-                      )}
-                    </div>
-
-                    {evidenceIds.length > 0 && (
-                      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2 font-mono text-[10px]">
-                        <span className="text-muted-foreground">Refs:</span>
-                        {evidenceIds.map((id) => (
-                          <button
-                            key={id}
-                            onClick={() => setInspectedEvId(inspectedEvId === id ? null : id)}
-                            className={cn(
-                              "rounded border px-1.5 py-0.5 transition-colors",
-                              inspectedEvId === id
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border/60 bg-muted/40 text-muted-foreground hover:border-primary/60 hover:text-foreground",
-                            )}
-                          >
-                            {id}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="space-y-1.5">
+              {items.map((f, i) => (
+                <FindingRowItem
+                  key={i}
+                  finding={f}
+                  onInspectRef={(id) => setInspectedEvId(inspectedEvId === id ? null : id)}
+                  inspectedEvId={inspectedEvId}
+                />
+              ))}
             </div>
           </section>
         );
@@ -524,12 +602,19 @@ export function RichEvidenceItem({ e }: { e: Evidence }) {
   const kind = e?.kind || "";
 
   const isHttp =
-    kind === "http_probe" ||
-    kind === "web_fetch" ||
+    (kind as string) === "http_probe" ||
+    (kind as string) === "web_fetch" ||
+    kind === "http_endpoint" ||
     title.toLowerCase().startsWith("get ") ||
     title.toLowerCase().startsWith("post ");
 
-  const isCode = kind === "repo_file" || e?.line != null || e?.symbol != null;
+  const isCode =
+    (kind as string) === "repo_file" ||
+    kind === "source_code" ||
+    kind === "function" ||
+    kind === "class" ||
+    e?.line != null ||
+    Boolean((e as unknown as { symbol?: string }).symbol);
   const isVisual = kind === "visual_frame" || Boolean(e?.image);
 
   const getMethodBadge = (t: string) => {

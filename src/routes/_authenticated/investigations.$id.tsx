@@ -21,6 +21,7 @@ import {
   FileCode2,
   Image,
   Terminal,
+  MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { advanceInvestigation } from "@/lib/recon/investigations.functions";
@@ -292,171 +293,160 @@ function InvestigationPage() {
         </section>
 
         <section className="min-w-0">
-          <Tabs
-            key={`${id}-${Boolean(report)}`}
-            defaultValue={reportTab(inv.target_type, Boolean(report))}
-          >
-            <TabsList className="h-auto flex-wrap gap-1 rounded-xl border border-border/80 bg-muted/40 p-1">
-              {report && (
-                <TabsTrigger
-                  value="flow"
-                  className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
-                >
-                  <GitFork className="h-3.5 w-3.5 text-primary" />
-                  <span>Flow ({report.flow?.length ?? 0})</span>
-                </TabsTrigger>
-              )}
-              <TabsTrigger
-                value="graph"
-                className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
-              >
-                <Share2 className="h-3.5 w-3.5 text-cyan-400" />
-                <span>Graph ({liveGraph.nodes?.length ?? 0})</span>
-              </TabsTrigger>
-              {report && (
-                <TabsTrigger
-                  value="findings"
-                  className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>Findings ({report.findings?.length ?? 0})</span>
-                </TabsTrigger>
-              )}
-              <TabsTrigger
-                value="evidence"
-                className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
-              >
-                <FileCode2 className="h-3.5 w-3.5 text-primary" />
-                <span>Evidence ({evidence.length})</span>
-              </TabsTrigger>
-              {inv.target_type === "visual" && (
-                <TabsTrigger
-                  value="screens"
-                  className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
-                >
-                  <Image className="h-3.5 w-3.5 text-cyan-400" />
-                  <span>Screens ({evidence.filter((e) => e.kind === "visual_frame").length})</span>
-                </TabsTrigger>
-              )}
-              <TabsTrigger
-                value="hypotheses"
-                className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
-              >
-                <FlaskConical className="h-3.5 w-3.5 text-purple-400" />
-                <span>Hypotheses ({hypotheses.length})</span>
-              </TabsTrigger>
-              {report && (
-                <TabsTrigger
-                  value="details"
-                  className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
-                >
-                  <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>Technical Spec</span>
-                </TabsTrigger>
-              )}
-            </TabsList>
+          {(() => {
+            const rawTab = reportTab(inv.target_type, Boolean(report));
+            const defaultTab =
+              rawTab === "flow" ? "summary" : rawTab === "screens" ? "evidence" : rawTab;
 
-            {report && (
-              <TabsContent value="flow" className="mt-4">
-                <VisualFlowPipeline flow={report.flow ?? []} evidence={evidence} />
-              </TabsContent>
-            )}
-            <TabsContent value="graph" className="mt-4">
-              <FilteredEvidenceGraph
-                key={id}
-                nodes={liveGraph.nodes}
-                edges={liveGraph.edges}
-                findings={report?.findings ?? []}
-                evidence={evidence}
-              />
-            </TabsContent>
-            {report && (
-              <TabsContent value="findings" className="mt-4">
-                <VisualFindingsMatrix report={report} evidence={evidence} />
-              </TabsContent>
-            )}
-            <TabsContent value="evidence" className="mt-4">
-              <div className="space-y-2.5">
-                {evidence
-                  .slice()
-                  .reverse()
-                  .map((e) => (
-                    <RichEvidenceItem key={e.id} e={e} />
-                  ))}
-              </div>
-            </TabsContent>
-            {inv.target_type === "visual" && (
-              <TabsContent value="screens" className="mt-4">
-                <div
-                  className={cn(
-                    "grid gap-4",
-                    evidence.filter((e) => e.kind === "visual_frame").length > 1 &&
-                      "sm:grid-cols-2",
+            return (
+              <Tabs key={`${id}-${Boolean(report)}`} defaultValue={defaultTab}>
+                <TabsList className="h-auto flex-wrap gap-1 rounded-xl border border-border/80 bg-muted/40 p-1">
+                  {report && (
+                    <TabsTrigger
+                      value="summary"
+                      className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                    >
+                      <FileText className="h-3.5 w-3.5 text-primary" />
+                      <span>Summary</span>
+                    </TabsTrigger>
                   )}
-                >
-                  {evidence
-                    .filter((e) => e.kind === "visual_frame")
-                    .map((e) => (
-                      <figure
-                        key={e.id}
-                        className="min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm"
-                      >
-                        {e.image && (
-                          <img
-                            src={e.image}
-                            alt={e.title}
-                            className="aspect-video w-full bg-muted object-contain"
-                          />
-                        )}
-                        <figcaption className="p-3">
-                          <p className="font-mono text-xs text-primary">
-                            {e.id} · {e.timestamp?.toFixed(1)}s
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-foreground">{e.title}</p>
-                          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
-                            {e.snippet}
-                          </p>
-                        </figcaption>
-                      </figure>
-                    ))}
-                </div>
-              </TabsContent>
-            )}
-            <TabsContent value="hypotheses" className="mt-4">
-              <div className="space-y-2.5">
-                {hypotheses.map((h) => (
-                  <div key={h.id} className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-muted-foreground">{h.id}</span>
-                      <StatusBadge
-                        status={
-                          h.status === "supported"
-                            ? "verified"
-                            : h.status === "contradicted"
-                              ? "failed"
-                              : "unknown"
-                        }
-                      />
+                  {report && (
+                    <TabsTrigger
+                      value="findings"
+                      className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>Findings ({report.findings?.length ?? 0})</span>
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger
+                    value="graph"
+                    className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                  >
+                    <Share2 className="h-3.5 w-3.5 text-cyan-400" />
+                    <span>Graph ({liveGraph.nodes?.length ?? 0})</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="evidence"
+                    className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                  >
+                    <FileCode2 className="h-3.5 w-3.5 text-primary" />
+                    <span>Evidence ({evidence.length})</span>
+                  </TabsTrigger>
+                  {report && (
+                    <TabsTrigger
+                      value="next_steps"
+                      className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                    >
+                      <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+                      <span>Next steps</span>
+                    </TabsTrigger>
+                  )}
+                  {report && (
+                    <TabsTrigger
+                      value="qa"
+                      className="flex items-center gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 text-cyan-400" />
+                      <span>Q&A</span>
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+
+                {report && (
+                  <TabsContent value="summary" className="mt-4 space-y-6">
+                    <VisualFlowPipeline flow={report.flow ?? []} evidence={evidence} />
+                    <div className="pt-2">
+                      <FormattedTechnicalDetails report={report} />
                     </div>
-                    <p className="mt-2 text-sm text-foreground">{h.statement}</p>
-                    {h.evidence_ids.length > 0 && (
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">
-                        {h.evidence_ids.join(", ")}
-                      </p>
-                    )}
+                  </TabsContent>
+                )}
+                {report && (
+                  <TabsContent value="findings" className="mt-4">
+                    <VisualFindingsMatrix report={report} evidence={evidence} />
+                  </TabsContent>
+                )}
+                <TabsContent value="graph" className="mt-4">
+                  <FilteredEvidenceGraph
+                    key={id}
+                    nodes={liveGraph.nodes}
+                    edges={liveGraph.edges}
+                    findings={report?.findings ?? []}
+                    evidence={evidence}
+                  />
+                </TabsContent>
+                <TabsContent value="evidence" className="mt-4 space-y-4">
+                  {inv.target_type === "visual" && evidence.some((e) => e.kind === "visual_frame") && (
+                    <div
+                      className={cn(
+                        "grid gap-4 mb-4",
+                        evidence.filter((e) => e.kind === "visual_frame").length > 1 &&
+                          "sm:grid-cols-2",
+                      )}
+                    >
+                      {evidence
+                        .filter((e) => e.kind === "visual_frame")
+                        .map((e) => (
+                          <figure
+                            key={e.id}
+                            className="min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm"
+                          >
+                            {e.image && (
+                              <img
+                                src={e.image}
+                                alt={e.title}
+                                className="aspect-video w-full bg-muted object-contain"
+                              />
+                            )}
+                            <figcaption className="p-3">
+                              <p className="font-mono text-xs text-primary">
+                                {e.id} · {e.timestamp?.toFixed(1)}s
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-foreground">{e.title}</p>
+                              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
+                                {e.snippet}
+                              </p>
+                            </figcaption>
+                          </figure>
+                        ))}
+                    </div>
+                  )}
+                  <div className="space-y-2.5">
+                    {evidence
+                      .slice()
+                      .reverse()
+                      .map((e) => (
+                        <RichEvidenceItem key={e.id} e={e} />
+                      ))}
                   </div>
-                ))}
-              </div>
-            </TabsContent>
-            {report && (
-              <TabsContent value="details" className="mt-4">
-                <FormattedTechnicalDetails report={report} />
-              </TabsContent>
-            )}
-          </Tabs>
+                </TabsContent>
+                {report && (
+                  <TabsContent value="next_steps" className="mt-4">
+                    <ReportWorkspace
+                      id={id}
+                      target={inv.target_type as TargetType}
+                      report={report}
+                      evidence={evidence}
+                      section="next_steps"
+                    />
+                  </TabsContent>
+                )}
+                {report && (
+                  <TabsContent value="qa" className="mt-4">
+                    <ReportWorkspace
+                      id={id}
+                      target={inv.target_type as TargetType}
+                      report={report}
+                      evidence={evidence}
+                      section="qa"
+                    />
+                  </TabsContent>
+                )}
+              </Tabs>
+            );
+          })()}
         </section>
       </div>
-      {report && <ReportWorkspace id={id} target={inv.target_type as TargetType} report={report} evidence={evidence} />}
       {report && (
         <section className="print-report hidden">
           <h2>Findings</h2>

@@ -24,6 +24,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Logo } from "@/components/recon/AppHeader";
 import { ThemeToggle } from "@/components/recon/ThemeToggle";
 import { cn } from "@/lib/utils";
@@ -164,25 +170,23 @@ function Home() {
             </span>
           </h1>
 
-          {/* Subtitle */}
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            An autonomous AI investigation engine that dissects GitHub repos, public APIs, browser
-            recordings, and binary files into interactive execution flow diagrams, call hierarchies,
-            and zero-hallucination proof.
+          {/* Subtitle: one single line */}
+          <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
+            Autonomous software reverse engineering backed by deterministic proof.
           </p>
+
+          {/* Primary CTA button */}
+          <div className="mt-6 flex justify-center">
+            <Button asChild size="lg" className="rounded-full px-8 font-semibold shadow-lg shadow-primary/25">
+              <Link to="/new">
+                Start Investigation <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
 
-        {/* 3. INTERACTIVE TARGET LAUNCHER (The Figma "Booking Widget" equivalent) */}
+        {/* 3. INTERACTIVE TARGET LAUNCHER */}
         <section id="launcher" className="relative mt-12 scroll-mt-24">
-          {/* Floating Metric Badges */}
-          <div className="hidden lg:flex items-center gap-2 absolute -left-8 -top-6 rounded-full border border-emerald-500/30 bg-background/90 px-3 py-1.5 shadow-lg backdrop-blur">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-            <span className="font-mono text-xs font-semibold text-foreground">99.4% Verified Precision</span>
-          </div>
-          <div className="hidden lg:flex items-center gap-2 absolute -right-8 -top-6 rounded-full border border-cyan-500/30 bg-background/90 px-3 py-1.5 shadow-lg backdrop-blur">
-            <Zap className="h-4 w-4 text-cyan-400" />
-            <span className="font-mono text-xs font-semibold text-foreground">Automated Call Graph</span>
-          </div>
 
           <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-2xl backdrop-blur sm:p-6">
             {/* Target Mode Tabs (Flights / Hotels style) */}
@@ -393,83 +397,119 @@ function Home() {
           </div>
         </section>
 
-        {/* 5. CAPABILITIES GRID ("Popular Destinations" cards style) */}
-        <section id="capabilities" className="mt-24 scroll-mt-24">
+        {/* 5. TARGET CAPABILITIES (Icon cards + Tooltip + Language Chips) */}
+        <section id="capabilities" className="mt-20 scroll-mt-24">
           <div className="text-center">
             <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              Engineered For 4 Target Vectors
+              Five Investigation Vectors
             </h2>
-            <p className="mt-2 text-muted-foreground">
-              Select your attack surface. RECON adapts its toolset, scanner, and evidence grounding per target.
+            <p className="mt-1 text-sm text-muted-foreground">
+              Hover any card to inspect analysis mechanics and boundaries.
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                icon: GitBranch,
-                title: "Source Repositories",
-                mode: "White-box AST",
-                desc: "Scans AST across 12 languages (TS/JS, Python, Go, Rust, Java, C#, C/C++). Maps call hierarchies, secrets, and routes.",
-                color: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/30 text-emerald-400",
-              },
-              {
-                icon: Globe,
-                title: "Websites & APIs",
-                mode: "Black-box Probing",
-                desc: "Crawls HTML structure, scripts, form schemas, headers, robots.txt, and REST endpoints with strict SSRF protection.",
-                color: "from-blue-500/20 to-blue-500/5 border-blue-500/30 text-blue-400",
-              },
-              {
-                icon: ScanEye,
-                title: "Visual Screen Capture",
-                mode: "Visual Decompilation",
-                desc: "Captures tab recordings or bounded frames. Deconstructs visible controls, interaction steps, and state machines.",
-                color: "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30 text-cyan-400",
-              },
-              {
-                icon: Binary,
-                title: "Binary Executables",
-                mode: "Static Safe Dissection",
-                desc: "Pure TypeScript client-side parsing of PE and ELF headers, memory sections, extracted strings, and dynamic imports.",
-                color: "from-purple-500/20 to-purple-500/5 border-purple-500/30 text-purple-400",
-              },
-            ].map(({ icon: Icon, title, mode, desc, color }) => (
-              <div
-                key={title}
-                className={cn(
-                  "group relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-gradient-to-b p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl",
-                  color,
-                )}
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-xl border border-current/30 bg-current/10 p-2.5">
-                      <Icon className="h-6 w-6" />
-                    </span>
-                    <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      {mode}
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-lg font-bold text-foreground">{title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{desc}</p>
-                </div>
-
-                <div className="mt-6 border-t border-border/40 pt-3">
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-between p-0 text-xs font-semibold hover:bg-transparent hover:text-primary"
-                  >
-                    <Link to="/new">
-                      <span>Investigate this target</span>
-                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+          <TooltipProvider>
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {[
+                {
+                  icon: GitBranch,
+                  title: "Source Repos",
+                  label: "White-box AST Call Hierarchy",
+                  tooltip:
+                    "Indexes AST across 10+ languages up to 1,500 files. Maps call graphs, exported symbols, database references, and endpoint definitions.",
+                  color: "border-emerald-500/30 text-emerald-400 bg-emerald-500/5",
+                },
+                {
+                  icon: Globe,
+                  title: "Websites",
+                  label: "Same-Origin Route & HTML Crawl",
+                  tooltip:
+                    "Server-side fetch up to 12 pages. Extracts forms, scripts, HTTP headers, links, and API surfaces with strict SSRF guardrails.",
+                  color: "border-blue-500/30 text-blue-400 bg-blue-500/5",
+                },
+                {
+                  icon: Server,
+                  title: "Runtime APIs",
+                  label: "Safe Read-Only HTTP Probes",
+                  tooltip:
+                    "Issues safe GET/HEAD/OPTIONS requests to public APIs. Compares schemas, response structures, and CORS headers.",
+                  color: "border-amber-500/30 text-amber-400 bg-amber-500/5",
+                },
+                {
+                  icon: Binary,
+                  title: "Binaries",
+                  label: "Static Client-Side Parsing",
+                  tooltip:
+                    "Pure TypeScript browser parsing of PE and ELF headers, memory sections, imported DLL symbols, and raw strings. File is never executed.",
+                  color: "border-purple-500/30 text-purple-400 bg-purple-500/5",
+                },
+                {
+                  icon: ScanEye,
+                  title: "Visual Screen",
+                  label: "Local Screen Decompilation",
+                  tooltip:
+                    "Samples bounded JPEG frames in your browser. Extracts UI elements, workflows, and visual interaction states without server-side media storage.",
+                  color: "border-cyan-500/30 text-cyan-400 bg-cyan-500/5",
+                },
+              ].map(({ icon: Icon, title, label, tooltip, color }) => (
+                <Tooltip key={title}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to="/new"
+                      className={cn(
+                        "flex flex-col items-start justify-between rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md",
+                        color,
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <div className="mt-4">
+                        <p className="text-xs font-semibold text-foreground uppercase tracking-wider">{title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground font-medium line-clamp-2">{label}</p>
+                      </div>
                     </Link>
-                  </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs p-3 leading-relaxed" side="top">
+                    {tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </TooltipProvider>
+
+          {/* Languages Chips Row */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground mr-1">Supported AST:</span>
+            {["TS / JS", "Python", "Go", "Rust", "Java", "C#", "C / C++", "Ruby", "PHP", "Swift"].map((lang) => (
+              <span
+                key={lang}
+                className="rounded-md border border-border/70 bg-card px-2 py-0.5 font-mono text-[11px] text-muted-foreground"
+              >
+                {lang}
+              </span>
+            ))}
+          </div>
+
+          {/* Privacy Text: 3 Icon Bullets + Learn More */}
+          <div className="mt-8 rounded-xl border border-border/80 bg-card/60 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 flex-1">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <span><strong className="text-foreground">Stays on your device:</strong> Binaries parsed locally</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Search className="h-4 w-4 text-cyan-400 shrink-0" />
+                  <span><strong className="text-foreground">Sent for analysis:</strong> Only relevant code snippets</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Cpu className="h-4 w-4 text-primary shrink-0" />
+                  <span><strong className="text-foreground">Auto-deleted:</strong> 7–90 day retention or instant wipe</span>
                 </div>
               </div>
-            ))}
+              <Button asChild variant="link" size="sm" className="text-xs text-primary p-0">
+                <Link to="/settings">Learn more in Settings →</Link>
+              </Button>
+            </div>
           </div>
         </section>
 

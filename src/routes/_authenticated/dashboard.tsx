@@ -2,7 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Search, Pencil, Trash2, Plus, ArrowUpRight } from "lucide-react";
+import {
+  Search,
+  Pencil,
+  Trash2,
+  Plus,
+  ArrowUpRight,
+  GitBranch,
+  Globe,
+  Server,
+  Binary,
+  ScanEye,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,8 +25,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ConfidenceMeter, StatusBadge } from "@/components/recon/badges";
 import { deleteInvestigation, renameInvestigation } from "@/lib/recon/product.functions";
+import type { TargetType } from "@/lib/recon/types";
+
+const TARGET_ICONS: Record<TargetType, typeof GitBranch> = {
+  repo: GitBranch,
+  web: Globe,
+  runtime: Server,
+  binary: Binary,
+  visual: ScanEye,
+};
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
@@ -200,15 +226,30 @@ function Dashboard() {
                   </Button>
                 </div>
               ) : (
-                <Link to="/investigations/$id" params={{ id: r.id }} className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 font-medium">
-                    {r.title || r.question}
-                    <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </p>
-                  <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {r.target_ref} · {new Date(r.created_at).toLocaleDateString()}
-                  </p>
-                </Link>
+                <TooltipProvider>
+                  <Link to="/investigations/$id" params={{ id: r.id }} className="min-w-0 flex-1 group">
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const Icon = TARGET_ICONS[(r.target_type as TargetType) ?? "repo"] ?? GitBranch;
+                        return <Icon className="h-4 w-4 shrink-0 text-primary" />;
+                      })()}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="truncate font-medium text-foreground group-hover:text-primary transition-colors text-sm">
+                            {r.title || r.question}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md text-xs leading-relaxed" side="top">
+                          {r.question || r.title}
+                        </TooltipContent>
+                      </Tooltip>
+                      <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+                      {r.target_ref} · {new Date(r.created_at).toLocaleDateString()}
+                    </p>
+                  </Link>
+                </TooltipProvider>
               )}
               <StatusBadge status={r.status} />
               <ConfidenceMeter value={r.confidence == null ? null : Number(r.confidence)} />
